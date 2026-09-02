@@ -5,14 +5,24 @@
 
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 
-const API_KEY = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
+const getApiKey = (): string => {
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env.API_KEY || process.env.GEMINI_API_KEY || '';
+  }
+  try {
+    return (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY || '';
+  } catch {
+    return '';
+  }
+};
 
 let chatSession: Chat | null = null;
 
 export const initializeChat = (): Chat => {
   if (chatSession) return chatSession;
 
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const apiKey = getApiKey();
+  const ai = new GoogleGenAI({ apiKey });
   
   chatSession = ai.chats.create({
     model: 'gemini-2.5-flash',
@@ -38,7 +48,8 @@ export const initializeChat = (): Chat => {
 };
 
 export const sendMessageToGemini = async (message: string): Promise<string> => {
-  if (!API_KEY) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
     // Provide intelligent fallback response if API key is not yet configured
     if (message.toLowerCase().includes('it') || message.toLowerCase().includes('cloud')) {
       return "Titanium Solutions Managed IT encompasses 24/7 proactive telemetry, automated failover disaster recovery, and Zero-Trust cloud network architecture. We guarantee 99.99% operational continuity for critical enterprise workloads.";

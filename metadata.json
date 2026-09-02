@@ -1,0 +1,12 @@
+{
+  "name": "Titanium Solutions",
+  "description": "IT Support, AI Integration, and Training services platform for TNSSYS.TECH",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
