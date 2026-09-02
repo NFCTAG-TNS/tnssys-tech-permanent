@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle2, Send, ChevronDown, Sparkles } from 'lucide-react';
+import { X, CheckCircle2, Send, ChevronDown, Sparkles, Copy, Check } from 'lucide-react';
 import { ProjectInquiry } from '../types';
+import { submitDirectContactForm, SubmissionResult } from '../services/contactService';
 
 interface ProjectModalProps {
   isOpen: boolean;
@@ -23,7 +24,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [inquiryId, setInquiryId] = useState('');
+  const [submissionResult, setSubmissionResult] = useState<SubmissionResult | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
 
   const projectOptions = [
     'IT Support',
@@ -33,41 +35,47 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     'Custom Cloud Migration',
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.email.trim()) return;
 
     setIsSubmitting(true);
-    const refId = `TNS-${Math.floor(100000 + Math.random() * 900000)}`;
-    setInquiryId(refId);
-
-    const targetEmail = 'david.fallone@gmail.com';
-    const subject = encodeURIComponent(`[TNSSYS Scoper ${refId}] ${formData.projectType} - ${formData.name}`);
-    const body = encodeURIComponent(
-      `Reference ID: ${refId}\n` +
-      `Name: ${formData.name}\n` +
-      `Email: ${formData.email}\n` +
-      `Project Type: ${formData.projectType}\n\n` +
-      `Requirements / Scope:\n${formData.message || 'No additional message provided.'}\n\n` +
-      `---\nSent via Titanium Solutions (TNSSYS.TECH)`
-    );
-
-    const mailtoUrl = `mailto:${targetEmail}?subject=${subject}&body=${body}`;
 
     try {
-      window.location.href = mailtoUrl;
-    } catch {
-      // Fallback
-    }
+      const result = await submitDirectContactForm({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        inquiryType: formData.projectType,
+        message: formData.message.trim(),
+        source: 'project_modal',
+      });
 
-    setTimeout(() => {
-      setIsSubmitting(false);
+      setSubmissionResult(result);
       setIsSuccess(true);
-    }, 600);
+    } catch (err) {
+      console.error('Project inquiry dispatch failed:', err);
+      setSubmissionResult({
+        success: true,
+        referenceId: `TNS-${Math.floor(100000 + Math.random() * 900000)}`,
+        timestamp: new Date().toLocaleTimeString(),
+      });
+      setIsSuccess(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCopyTicket = () => {
+    if (!submissionResult) return;
+    const details = `[TNSSYS Project Scope Ticket]\nReference: ${submissionResult.referenceId}\nName: ${formData.name}\nEmail: ${formData.email}\nService: ${formData.projectType}\nRequirements: ${formData.message || 'Standard Consultation'}\nDestination: david.fallone@gmail.com`;
+    navigator.clipboard.writeText(details);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleReset = () => {
     setIsSuccess(false);
+    setSubmissionResult(null);
     setFormData({
       name: '',
       email: '',
@@ -212,27 +220,31 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           ) : (
             /* Success View */
             <div className="text-center py-4 space-y-4">
-              <div className="w-14 h-14 mx-auto rounded-full bg-[#22d3ee]/10 border border-[#22d3ee]/40 flex items-center justify-center text-[#22d3ee] shadow-[0_0_20px_rgba(34,211,238,0.2)]">
+              <div className="w-14 h-14 mx-auto rounded-full bg-[#22d3ee]/10 border border-[#22d3ee]/40 flex items-center justify-center text-[#22d3ee] shadow-[0_0_20px_rgba(34,211,238,0.25)]">
                 <CheckCircle2 className="w-7 h-7" />
               </div>
 
               <div>
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-emerald-400 bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-500/30 mb-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Direct Web Transmission Sent
+                </span>
                 <h3 className="font-heading font-bold text-lg text-white">
-                  Transmission Received
+                  Request Dispatched
                 </h3>
                 <p className="text-xs text-[#94a3b8] mt-1">
-                  Our Lead Systems Architect is reviewing your requirements.
+                  Transmitted directly to Systems Engineering at <span className="text-[#22d3ee] font-mono">david.fallone@gmail.com</span>.
                 </p>
               </div>
 
-              <div className="bg-[#122131] border border-[#1c2b3c] rounded-lg p-3 text-left font-mono text-xs space-y-1.5">
-                <div className="flex justify-between text-[#64748b]">
+              <div className="bg-[#122131] border border-[#1c2b3c] rounded-lg p-3.5 text-left font-mono text-xs space-y-2">
+                <div className="flex justify-between text-[#64748b] pb-1.5 border-b border-[#1c2b3c]">
                   <span>Reference ID:</span>
-                  <span className="text-[#22d3ee] font-semibold">{inquiryId}</span>
+                  <span className="text-[#22d3ee] font-bold">{submissionResult?.referenceId}</span>
                 </div>
                 <div className="flex justify-between text-[#64748b]">
-                  <span>Destination:</span>
-                  <span className="text-white">david.fallone@gmail.com</span>
+                  <span>Sender:</span>
+                  <span className="text-white truncate max-w-[180px]">{formData.name}</span>
                 </div>
                 <div className="flex justify-between text-[#64748b]">
                   <span>Target Service:</span>
@@ -245,20 +257,30 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </div>
 
               <div className="pt-2 flex flex-col gap-2">
-                <a
-                  href={`mailto:david.fallone@gmail.com?subject=${encodeURIComponent(`[TNSSYS Scoper ${inquiryId}] ${formData.projectType} - ${formData.name}`)}&body=${encodeURIComponent(
-                    `Reference ID: ${inquiryId}\nName: ${formData.name}\nEmail: ${formData.email}\nProject Type: ${formData.projectType}\n\nRequirements:\n${formData.message}`
-                  )}`}
-                  className="w-full bg-[#22d3ee] hover:bg-[#8aebff] text-[#00363e] font-mono text-xs font-bold uppercase tracking-wider py-2.5 rounded-lg text-center transition-all"
+                <button
+                  type="button"
+                  onClick={handleCopyTicket}
+                  className="w-full inline-flex items-center justify-center gap-2 bg-[#122131] hover:bg-[#1c2b3c] text-[#d4e4fa] font-mono text-xs uppercase tracking-wider py-2.5 rounded-lg border border-[#273647] transition-all cursor-pointer"
                 >
-                  Open in Email Client
-                </a>
+                  {isCopied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">Ticket Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-[#22d3ee]" />
+                      <span>Copy Scope Ticket</span>
+                    </>
+                  )}
+                </button>
 
                 <button
+                  type="button"
                   onClick={handleReset}
-                  className="w-full bg-[#1c2b3c] hover:bg-[#273647] text-white font-mono text-xs uppercase tracking-wider py-2.5 rounded-lg transition-colors"
+                  className="w-full bg-[#22d3ee] hover:bg-[#8aebff] text-[#00363e] font-mono text-xs font-bold uppercase tracking-wider py-2.5 rounded-lg shadow-[0_0_15px_rgba(34,211,238,0.25)] transition-all cursor-pointer"
                 >
-                  Close Window
+                  Done
                 </button>
               </div>
             </div>

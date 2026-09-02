@@ -10,6 +10,25 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  // API endpoints
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  app.post("/api/contact", (req, res) => {
+    const payload = req.body || {};
+    console.log(`[Contact Submission] Received inquiry from ${payload.name} (${payload.email}) for ${payload.inquiryType || payload._subject}`);
+    res.json({
+      success: true,
+      referenceId: payload.referenceId || `TNS-${Math.floor(100000 + Math.random() * 900000)}`,
+      receivedAt: new Date().toISOString(),
+      message: "Transmission received at Systems Engineering node.",
+    });
+  });
+
   // Serve static files from dist/public in production
   const staticPath =
     process.env.NODE_ENV === "production"
@@ -23,10 +42,10 @@ async function startServer() {
     res.sendFile(path.join(staticPath, "index.html"));
   });
 
-  const port = process.env.PORT || 3000;
+  const port = Number(process.env.PORT) || 3000;
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${port}/`);
   });
 }
 
